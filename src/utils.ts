@@ -1,0 +1,182 @@
+import { 
+  MotorcycleProfile, 
+  MaintenanceSchedule, 
+  MaintenanceRecord, 
+  FuelRecord, 
+  ExpenseRecord,
+  BikeDocument
+} from './types';
+
+// Get difference in days between two dates
+export const getDaysDiff = (dateStr1: string, dateStr2: string): number => {
+  const d1 = new Date(dateStr1);
+  const d2 = new Date(dateStr2);
+  const diffTime = d2.getTime() - d1.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// Calculate cost per kilometer
+export const calculateCostPerKm = (
+  currentOdo: number,
+  expenses: ExpenseRecord[],
+  records: MaintenanceRecord[],
+  fuels: FuelRecord[]
+): number => {
+  if (currentOdo <= 0) return 0;
+  
+  const totalExpenses = expenses
+    .filter(e => e.category !== 'Registration') // Exclude initial purchase registration
+    .reduce((sum, e) => sum + e.amount, 0);
+    
+  const totalMaint = records.reduce((sum, r) => sum + r.cost, 0);
+  const totalFuel = fuels.reduce((sum, f) => sum + f.totalAmount, 0);
+  
+  return (totalExpenses + totalMaint + totalFuel) / currentOdo;
+};
+
+// Calculate average fuel efficiency (mileage in km/l)
+export const calculateAverageMileage = (fuels: FuelRecord[]): number => {
+  if (fuels.length < 2) return 32.5; // Default average for Jawa Classic 300
+  
+  const sorted = [...fuels].sort((a, b) => a.odometer - b.odometer);
+  const odometerDiff = sorted[sorted.length - 1].odometer - sorted[0].odometer;
+  
+  // Sum liters from all except the first refuel (since first refuel fills it up)
+  const totalLiters = sorted.slice(1).reduce((sum, f) => sum + f.liters, 0);
+  
+  if (totalLiters === 0) return 32.5;
+  return odometerDiff / totalLiters;
+};
+
+// Calculate detailed bike health scores
+export interface HealthBreakdown {
+  engine: number;
+  chain: number;
+  chrome: number;
+  electrical: number;
+  documents: number;
+  overall: number;
+}
+
+export const calculateHealthScore = (
+  profile: MotorcycleProfile,
+  schedules: MaintenanceSchedule[],
+  documents: BikeDocument[],
+  currentDateStr: string = "2026-05-30"
+): HealthBreakdown => {
+  // 1. Engine Health Score (Engine Oil, Oil Filter, Coolant, Spark Plug)
+  let engineScore = 100;
+  const oilSchedule = schedules.find(s => s.id === "sch-oil");
+  if (oilSchedule && oilSchedule.lastPerformedOdo && oilSchedule.lastPerformedDate) {
+    const kmSinceOil = profile.currentOdometer - oilSchedule.lastPerformedOdo;
+    const daysSinceOil = getDaysDiff(oilSchedule.lastPerformedDate, currentDateStr);
+    
+    const odoOverdue = kmSinceOil - (oilSchedule.intervalKm || 5000);
+    const daysOverdue = daysSinceOil - (oilSchedule.intervalDays || 180);
+    
+    if (odoOverdue > 0) {
+      engineScore -= Math.min(odoOverdue * 0.05, 40); // Max 40% penalty for oil odo
+    }
+    if (daysOverdue > 0) {
+      engineScore -= Math.min(daysOverdue * 0.2, 40); // Max 40% penalty for oil days
+    }
+  }
+
+  const coolantSchedule = schedules.find(s => s.id === "sch-coolant");
+  if (coolantSchedule && coolantSchedule.lastPerformedDate) {
+    const daysSinceCoolant = getDaysDiff(coolantSchedule.lastPerformedDate, currentDateStr);
+    const overdueDays = daysSinceCoolant - (coolantSchedule.intervalDays || 730);
+    if (overdueDays > 0) {
+      engineScore -= Math.min(overdueDays * 0.1, 20); // Max 20% penalty
+    }
+  }
+
+  engineScore = Math.max(0, Math.min(100, engineScore));
+
+  // 2. Chain Health Score (Cleaning, Lube, Tension)
+  let chainScore = 100;
+  const cleanSchedule = schedules.find(s => s.id === "sch-clean");
+  if (cleanSchedule && cleanSchedule.lastPerformedOdo) {
+    const kmSinceClean = profile.currentOdometer - cleanSchedule.lastPerformedOdo;
+    const cleanOverdue = kmSinceClean - (cleanSchedule.intervalKm || 500);
+    if (cleanOverdue > 0) {
+      chainScore -= Math.min(cleanOverdue * 0.2, 50); // Max 50% penalty
+    }
+  }
+
+  const adjustSchedule = schedules.find(s => s.id === "sch-adjust");
+  if (adjustSchedule && adjustSchedule.lastPerformedOdo) {
+    const kmSinceAdjust = profile.currentOdometer - adjustSchedule.lastPerformedOdo;
+    const adjustOverdue = kmSinceAdjust - (adjustSchedule.intervalKm || 1000);
+    if (adjustOverdue > 0) {
+      chainScore -= Math.min(adjustOverdue * 0.1, 30); // Max 30% penalty
+    }
+  }
+  
+  chainScore = Math.max(0, Math.min(100, chainScore));
+
+  // 3. Chrome Health Score (Polishing & Inspections)
+  let chromeScore = 100;
+  const polishSchedule = schedules.find(s => s.id === "sch-polish");
+  if (polishSchedule && polishSchedule.lastPerformedDate) {
+    const daysSincePolish = getDaysDiff(polishSchedule.lastPerformedDate, currentDateStr);
+    const polishOverdue = daysSincePolish - (polishSchedule.intervalDays || 30);
+    if (polishOverdue > 0) {
+      chromeScore -= Math.min(polishOverdue * 1.5, 60); // Max 60% penalty
+    }
+  }
+
+  const rustSchedule = schedules.find(s => s.id === "sch-rust");
+  if (rustSchedule && rustSchedule.lastPerformedDate) {
+    const daysSinceRust = getDaysDiff(rustSchedule.lastPerformedDate, currentDateStr);
+    const rustOverdue = daysSinceRust - (rustSchedule.intervalDays || 45);
+    if (rustOverdue > 0) {
+      chromeScore -= Math.min(rustOverdue * 1.0, 40); // Max 40% penalty
+    }
+  }
+  chromeScore = Math.max(0, Math.min(100, chromeScore));
+
+  // 4. Electrical Health Score (Battery Checks)
+  let electricalScore = 100;
+  const batterySchedule = schedules.find(s => s.id === "sch-battery");
+  if (batterySchedule && batterySchedule.lastPerformedDate) {
+    const daysSinceBattery = getDaysDiff(batterySchedule.lastPerformedDate, currentDateStr);
+    const batteryOverdue = daysSinceBattery - (batterySchedule.intervalDays || 90);
+    if (batteryOverdue > 0) {
+      electricalScore -= Math.min(batteryOverdue * 0.8, 50); // Max 50% penalty
+    }
+  }
+  electricalScore = Math.max(0, Math.min(100, electricalScore));
+
+  // 5. Documents Health Score (Validity)
+  let documentsScore = 100;
+  documents.forEach(doc => {
+    const daysToExpiry = getDaysDiff(currentDateStr, doc.expiryDate);
+    if (daysToExpiry < 0) {
+      documentsScore -= 40; // Overdue documents carry heavy penalty
+    } else if (daysToExpiry < 15) {
+      documentsScore -= 15; // Warning penalty
+    } else if (daysToExpiry < 30) {
+      documentsScore -= 5;
+    }
+  });
+  documentsScore = Math.max(0, Math.min(100, documentsScore));
+
+  // 6. Overall Health Score
+  const overall = Math.round(
+    engineScore * 0.35 +
+    chainScore * 0.25 +
+    chromeScore * 0.15 +
+    electricalScore * 0.15 +
+    documentsScore * 0.1
+  );
+
+  return {
+    engine: Math.round(engineScore),
+    chain: Math.round(chainScore),
+    chrome: Math.round(chromeScore),
+    electrical: Math.round(electricalScore),
+    documents: Math.round(documentsScore),
+    overall
+  };
+};
