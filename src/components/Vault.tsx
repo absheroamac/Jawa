@@ -32,7 +32,7 @@ export const Vault: React.FC<VaultProps> = ({
   const [editingDoc, setEditingDoc] = useState<BikeDocument | null>(null);
   const [docNum, setDocNum] = useState('');
   const [expiry, setExpiry] = useState('');
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   // Expense Aggregation for Donut
   const categoriesMap: Record<string, number> = {};

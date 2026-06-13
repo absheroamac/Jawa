@@ -16,7 +16,7 @@ export const FuelLog: React.FC<FuelLogProps> = ({
   const [showLogModal, setShowLogModal] = useState(false);
   
   // Form fields
-  const [date, setDate] = useState('2026-05-30');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(profile.currentOdometer.toString());
   const [liters, setLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('106.0');

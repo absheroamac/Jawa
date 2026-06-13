@@ -26,15 +26,17 @@ export const Garage: React.FC<GarageProps> = ({
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<MaintenanceSchedule | null>(null);
 
+  const [showPerformModal, setShowPerformModal] = useState(false);
+
   // Form Fields
-  const [date, setDate] = useState('2026-05-30');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(profile.currentOdometer.toString());
   const [brand, setBrand] = useState('');
   const [cost, setCost] = useState('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
 
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   const getPartLifecycle = (part: PartLifecycle) => {
     const notSet = !part.installedDate || part.installedOdo === 0;
@@ -130,20 +132,27 @@ export const Garage: React.FC<GarageProps> = ({
     setShowLogModal(false);
   };
 
-  const handleQuickReset = (schedule: MaintenanceSchedule) => {
-    onUpdateSchedule(schedule.id, profile.currentOdometer, currentDate);
-    
-    // Auto-create record
+
+
+  const handlePerformSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSchedule || !odometer) return;
+
     onAddRecord({
-      date: currentDate,
-      odometer: profile.currentOdometer,
-      category: schedule.category,
-      type: `${schedule.name} (Quick Maintenance)`,
-      description: `Quick garage check and reset performed for scheduled preset: ${schedule.name}.`,
-      workshopName: "Self Garage",
+      date,
+      odometer: parseInt(odometer),
+      category: selectedSchedule.category,
+      type: `${selectedSchedule.name} (Performed)`,
+      description: description || `Performed scheduled maintenance for: ${selectedSchedule.name}.`,
+      workshopName: 'Self Service',
       cost: 0,
-      notes: "Quick interactive cockpit reset"
     });
+
+    onUpdateSchedule(selectedSchedule.id, parseInt(odometer), date);
+
+    setSelectedSchedule(null);
+    setDescription('');
+    setShowPerformModal(false);
   };
 
   return (
@@ -275,7 +284,13 @@ export const Garage: React.FC<GarageProps> = ({
                 <button
                   className="btn btn-primary"
                   style={{ flex: 1, padding: '0.35rem 0.5rem', fontSize: '0.7rem' }}
-                  onClick={() => handleQuickReset(s)}
+                  onClick={() => {
+                    setSelectedSchedule(s);
+                    setOdometer(profile.currentOdometer.toString());
+                    setDate(currentDate);
+                    setDescription('');
+                    setShowPerformModal(true);
+                  }}
                 >
                   Perform
                 </button>
@@ -435,6 +450,64 @@ export const Garage: React.FC<GarageProps> = ({
               <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowLogModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Confirm Log</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Quick Perform Modal */}
+      {showPerformModal && selectedSchedule && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Clock size={20} style={{ color: 'var(--color-cyan)' }} />
+                <span>Perform: {selectedSchedule.name}</span>
+              </h2>
+              <button className="close-btn" onClick={() => setShowPerformModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handlePerformSubmit}>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="p-date">Date</label>
+                    <input 
+                      type="date" 
+                      id="p-date" 
+                      className="form-control" 
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="p-odo">Odometer (km)</label>
+                    <input 
+                      type="number" 
+                      id="p-odo" 
+                      className="form-control" 
+                      value={odometer}
+                      onChange={(e) => setOdometer(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="p-desc">Optional Description</label>
+                  <textarea 
+                    id="p-desc" 
+                    className="form-control" 
+                    rows={2}
+                    placeholder="E.g. Changed oil at home..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowPerformModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Activity</button>
               </div>
             </form>
           </div>

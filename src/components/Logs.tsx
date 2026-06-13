@@ -37,13 +37,13 @@ export const Logs: React.FC<LogsProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Additive Form fields
-  const [addDate, setAddDate] = useState('2026-05-30');
+  const [addDate, setAddDate] = useState(new Date().toISOString().split('T')[0]);
   const [addOdo, setAddOdo] = useState(profile.currentOdometer.toString());
   const [addBrand, setAddBrand] = useState('Liqui Moly 4T Additive');
   const [addQty, setAddQty] = useState('125');
   const [addCost, setAddCost] = useState('380');
 
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   // Timeline Compiler
   const timelineEvents: TimelineEvent[] = [];

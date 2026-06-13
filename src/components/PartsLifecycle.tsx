@@ -16,7 +16,7 @@ export const PartsLifecycle: React.FC<PartsLifecycleProps> = ({
   const [selectedPart, setSelectedPart] = useState<PartLifecycle | null>(null);
 
   // Form Fields
-  const [date, setDate] = useState('2026-05-30');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(profile.currentOdometer.toString());
   const [brand, setBrand] = useState('');
   const [cost, setCost] = useState('');

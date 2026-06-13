@@ -62,7 +62,7 @@ export const calculateHealthScore = (
   profile: MotorcycleProfile,
   schedules: MaintenanceSchedule[],
   documents: BikeDocument[],
-  currentDateStr: string = "2026-05-30"
+  currentDateStr: string = new Date().toISOString().split('T')[0]
 ): HealthBreakdown => {
   // 1. Engine Health Score (Engine Oil, Oil Filter, Coolant, Spark Plug)
   let engineScore = 100;

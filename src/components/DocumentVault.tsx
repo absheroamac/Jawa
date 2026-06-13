@@ -17,7 +17,7 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();

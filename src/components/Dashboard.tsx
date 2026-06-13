@@ -41,7 +41,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [odoInput, setOdoInput] = useState('');
   const [showOdoModal, setShowOdoModal] = useState(false);
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   // Calculations
   const totalFuel = fuels.reduce((sum, f) => sum + f.totalAmount, 0);

@@ -51,7 +51,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('cockpit');
   const [odoInput, setOdoInput] = useState('');
   const [showOdoModal, setShowOdoModal] = useState(false);
-  const currentDateStr = "2026-05-30";
+  const currentDateStr = new Date().toISOString().split('T')[0];
 
   // --- 1. AUTH STATE PERSISTENT LISTENER ---
   useEffect(() => {

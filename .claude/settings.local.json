@@ -10,7 +10,9 @@
       "Bash(sips -g pixelWidth -g pixelHeight \"/Users/abi/Developer/Personal/Jawa/public/Adobe Express - file.png\" \"/Users/abi/Developer/Personal/Jawa/public/Jawa-Logo-649x400.png\")",
       "Bash(sips '/Users/abi/Developer/Personal/Jawa/public/Adobe Express - file.png' --resampleHeightWidth 512 512 --out /Users/abi/Developer/Personal/Jawa/public/icons/icon-512.png)",
       "Bash(sips /Users/abi/Developer/Personal/Jawa/public/icons/icon-512.png --resampleHeightWidth 192 192 --out /Users/abi/Developer/Personal/Jawa/public/icons/icon-192.png)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/abi/Developer/Personal/Jawa/public/jawa_logo.png)",
+      "Bash(sips /Users/abi/Developer/Personal/Jawa/public/jawa_logo.png --resampleHeightWidth 192 192 --out /Users/abi/Developer/Personal/Jawa/public/icons/icon-192.png)"
     ]
   }
 }

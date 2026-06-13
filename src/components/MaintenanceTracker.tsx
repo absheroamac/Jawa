@@ -18,11 +18,13 @@ export const MaintenanceTracker: React.FC<MaintenanceTrackerProps> = ({
   onUpdateSchedule
 }) => {
   const [showLogModal, setShowLogModal] = useState(false);
+  const [showPerformModal, setShowPerformModal] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<MaintenanceSchedule | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   
   // Form fields
-  const [date, setDate] = useState('2026-05-30');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(profile.currentOdometer.toString());
   const [category, setCategory] = useState('Engine');
   const [type, setType] = useState('');
@@ -31,7 +33,7 @@ export const MaintenanceTracker: React.FC<MaintenanceTrackerProps> = ({
   const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
 
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,20 +68,27 @@ export const MaintenanceTracker: React.FC<MaintenanceTrackerProps> = ({
     setShowLogModal(false);
   };
 
-  const handleQuickReset = (schedule: MaintenanceSchedule) => {
-    onUpdateSchedule(schedule.id, profile.currentOdometer, currentDate);
-    
-    // Auto-create a maintenance record for quick updates
+
+
+  const handlePerformSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSchedule || !odometer) return;
+
     onAddRecord({
-      date: currentDate,
-      odometer: profile.currentOdometer,
-      category: schedule.category,
-      type: `${schedule.name} (Quick Garage Reset)`,
-      description: `Performed standard scheduled maintenance for: ${schedule.name}.`,
-      workshopName: "Self Garage",
+      date,
+      odometer: parseInt(odometer),
+      category: selectedSchedule.category,
+      type: `${selectedSchedule.name} (Performed)`,
+      description: description || `Performed scheduled maintenance for: ${selectedSchedule.name}.`,
+      workshopName: 'Self Service',
       cost: 0,
-      notes: "Quick maintenance tracking button reset."
     });
+
+    onUpdateSchedule(selectedSchedule.id, parseInt(odometer), date);
+
+    setSelectedSchedule(null);
+    setDescription('');
+    setShowPerformModal(false);
   };
 
   const getScheduleProgress = (s: MaintenanceSchedule) => {
@@ -180,9 +189,15 @@ export const MaintenanceTracker: React.FC<MaintenanceTrackerProps> = ({
                 <button 
                   className="btn btn-primary" 
                   style={{ flex: 1, fontSize: '0.8rem', padding: '0.45rem 0.75rem' }}
-                  onClick={() => handleQuickReset(s)}
+                  onClick={() => {
+                    setSelectedSchedule(s);
+                    setOdometer(profile.currentOdometer.toString());
+                    setDate(currentDate);
+                    setDescription('');
+                    setShowPerformModal(true);
+                  }}
                 >
-                  ⚡ Quick Lube / Polish
+                  ⚡ Perform
                 </button>
               </div>
             </div>
@@ -395,6 +410,62 @@ export const MaintenanceTracker: React.FC<MaintenanceTrackerProps> = ({
               <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowLogModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save Log Entry</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Perform Modal */}
+      {showPerformModal && selectedSchedule && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>⏱️ Perform: {selectedSchedule.name}</h2>
+              <button className="close-btn" onClick={() => setShowPerformModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handlePerformSubmit}>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="p-date">Date</label>
+                    <input 
+                      type="date" 
+                      id="p-date" 
+                      className="form-control" 
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="p-odo">Odometer (km)</label>
+                    <input 
+                      type="number" 
+                      id="p-odo" 
+                      className="form-control" 
+                      value={odometer}
+                      onChange={(e) => setOdometer(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="p-desc">Optional Description</label>
+                  <textarea 
+                    id="p-desc" 
+                    className="form-control" 
+                    rows={2}
+                    placeholder="E.g. Chain lubed at home..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowPerformModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Activity</button>
               </div>
             </form>
           </div>

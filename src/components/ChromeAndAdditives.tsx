@@ -22,13 +22,13 @@ export const ChromeAndAdditives: React.FC<ChromeAndAdditivesProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   
   // Additive Form fields
-  const [date, setDate] = useState('2026-05-30');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(profile.currentOdometer.toString());
   const [brand, setBrand] = useState('Liqui Moly 4T Additive');
   const [quantityMl, setQuantityMl] = useState('125');
   const [cost, setCost] = useState('380');
 
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   const handleAdditiveSubmit = (e: React.FormEvent) => {
     e.preventDefault();

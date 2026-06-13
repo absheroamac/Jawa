@@ -52,7 +52,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
   onQuickPolish,
   onNavigate
 }) => {
-  const currentDate = "2026-05-30";
+  const currentDate = new Date().toISOString().split('T')[0];
 
   // Calculations
   const avgMileage = calculateAverageMileage(fuels);
