@@ -149,6 +149,13 @@ function App() {
           if (!dbParts?.length) {
             await dbService.upsertPartsLifecycle(freshPartsLifecycle);
             setParts(freshPartsLifecycle);
+          } else if (dbParts.some(p => p.id === 'prt-tires') && !dbParts.some(p => p.id === 'prt-tire-f')) {
+            const migratedParts = [
+              ...dbParts.filter(p => p.id !== 'prt-tires'),
+              ...freshPartsLifecycle.filter(p => p.id === 'prt-tire-f' || p.id === 'prt-tire-r')
+            ];
+            await dbService.upsertPartsLifecycle(migratedParts);
+            setParts(migratedParts);
           } else {
             setParts(dbParts);
           }
@@ -184,7 +191,17 @@ function App() {
           if (localFuels) setFuels(JSON.parse(localFuels));
           if (localExpenses) setExpenses(JSON.parse(localExpenses));
           if (localChrome) setChromeParts(JSON.parse(localChrome));
-          if (localParts) setParts(JSON.parse(localParts));
+          if (localParts) {
+            const parsedParts: PartLifecycle[] = JSON.parse(localParts);
+            if (parsedParts.some(p => p.id === 'prt-tires') && !parsedParts.some(p => p.id === 'prt-tire-f')) {
+              setParts([
+                ...parsedParts.filter(p => p.id !== 'prt-tires'),
+                ...freshPartsLifecycle.filter(p => p.id === 'prt-tire-f' || p.id === 'prt-tire-r')
+              ]);
+            } else {
+              setParts(parsedParts);
+            }
+          }
           if (localDocs) setDocuments(JSON.parse(localDocs));
           if (localAdditives) setAdditives(JSON.parse(localAdditives));
         }

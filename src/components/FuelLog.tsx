@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MotorcycleProfile, FuelRecord } from '../types';
+import { calculateMileagePerFill } from '../utils';
 import { Plus, Calendar } from 'lucide-react';
 
 interface FuelLogProps {
@@ -21,9 +22,10 @@ export const FuelLog: React.FC<FuelLogProps> = ({
   const [liters, setLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('106.0');
   const [location, setLocation] = useState('');
+  const [sameLevel, setSameLevel] = useState(true);
 
   const totalLiters = fuels.reduce((sum, f) => sum + f.liters, 0);
-  
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!liters || !pricePerLiter || !odometer) return;
@@ -38,40 +40,33 @@ export const FuelLog: React.FC<FuelLogProps> = ({
       liters: litVal,
       pricePerLiter: priceVal,
       totalAmount: parseFloat((litVal * priceVal).toFixed(2)),
-      location: location || 'Local Petrol Pump'
+      location: location || 'Local Petrol Pump',
+      sameLevel
     });
 
     setLiters('');
     setLocation('');
+    setSameLevel(true);
     setShowLogModal(false);
   };
 
-  const sortedFuels = [...fuels].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const mileagePerFill = calculateMileagePerFill(fuels);
 
-  const refuelsWithMileage = sortedFuels.map((f, index) => {
-    if (index === 0) return { ...f, mileage: undefined };
-    const prev = sortedFuels[index - 1];
-    const kmCovered = f.odometer - prev.odometer;
-    const efficiency = kmCovered / f.liters;
-    return { ...f, mileage: parseFloat(efficiency.toFixed(1)) };
-  }).reverse();
+  const refuelsWithMileage = mileagePerFill
+    .map(f => ({ ...f, mileage: f.mileage !== null ? parseFloat(f.mileage.toFixed(1)) : null }))
+    .reverse();
 
   // SVG Line Chart dimensions
   const chartWidth = 500;
   const chartHeight = 180;
   const padding = 30;
 
-  const mileagePoints = sortedFuels
-    .map((f, index) => {
-      if (index === 0) return null;
-      const prev = sortedFuels[index - 1];
-      const kmCovered = f.odometer - prev.odometer;
-      return {
-        date: f.date.split('-').slice(1).join('/'),
-        value: kmCovered / f.liters
-      };
-    })
-    .filter(p => p !== null) as { date: string; value: number }[];
+  const mileagePoints = mileagePerFill
+    .filter(f => f.mileage !== null)
+    .map(f => ({
+      date: f.date.split('-').slice(1).join('/'),
+      value: f.mileage as number
+    }));
 
   const renderSVGChart = () => {
     if (mileagePoints.length < 1) {
@@ -150,11 +145,14 @@ export const FuelLog: React.FC<FuelLogProps> = ({
         </div>
         <div className="mini-metric-box">
           <span className="mini-metric-lbl">Latest Mileage</span>
-          <span className="mini-metric-val">{refuelsWithMileage[0]?.mileage ? `${refuelsWithMileage[0].mileage} km/L` : '--'}</span>
+          <span className="mini-metric-val">{refuelsWithMileage.find(r => r.mileage !== null)?.mileage ? `${refuelsWithMileage.find(r => r.mileage !== null)!.mileage} km/L` : '--'}</span>
         </div>
         <div className="mini-metric-box">
           <span className="mini-metric-lbl">Tank Range</span>
-          <span className="mini-metric-val">{fuels.length > 0 ? Math.round((refuelsWithMileage[0]?.mileage || 32.5) * 14) : 450} km</span>
+          <span className="mini-metric-val">{(() => {
+            const latest = refuelsWithMileage.find(r => r.mileage !== null)?.mileage;
+            return latest ? `${Math.round(latest * 14)} km` : '--';
+          })()}</span>
         </div>
       </div>
 
@@ -197,7 +195,9 @@ export const FuelLog: React.FC<FuelLogProps> = ({
                   {rec.mileage} km/L
                 </span>
               ) : (
-                <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>First Refill</span>
+                <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
+                  {rec.sameLevel ? 'First Refill' : 'Partial Fill'}
+                </span>
               )}
             </div>
           </div>
@@ -265,6 +265,19 @@ export const FuelLog: React.FC<FuelLogProps> = ({
                       required
                     />
                   </div>
+                </div>
+
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="f-sameLevel"
+                    checked={sameLevel}
+                    onChange={(e) => setSameLevel(e.target.checked)}
+                    style={{ width: 'auto' }}
+                  />
+                  <label htmlFor="f-sameLevel" style={{ margin: 0, fontSize: '0.8rem' }}>
+                    Filled to same level as last time? (needed for accurate mileage)
+                  </label>
                 </div>
 
                 <div className="form-group">

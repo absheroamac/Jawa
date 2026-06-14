@@ -34,18 +34,56 @@ export const calculateCostPerKm = (
   return (totalExpenses + totalMaint + totalFuel) / currentOdo;
 };
 
-// Calculate average fuel efficiency (mileage in km/l)
-export const calculateAverageMileage = (fuels: FuelRecord[]): number => {
-  if (fuels.length < 2) return 32.5; // Default average for Jawa Classic 300
-  
+// Mileage is only trustworthy between two fills where the tank was brought back
+// to the same level — liters added then equals fuel actually consumed since the
+// last such reference point. Fills not marked "same level" are skipped from the
+// math (but still logged for cost tracking).
+export const calculateAverageMileage = (fuels: FuelRecord[]): number | null => {
   const sorted = [...fuels].sort((a, b) => a.odometer - b.odometer);
-  const odometerDiff = sorted[sorted.length - 1].odometer - sorted[0].odometer;
-  
-  // Sum liters from all except the first refuel (since first refuel fills it up)
-  const totalLiters = sorted.slice(1).reduce((sum, f) => sum + f.liters, 0);
-  
-  if (totalLiters === 0) return 32.5;
-  return odometerDiff / totalLiters;
+  if (sorted.length < 2) return null;
+
+  let refOdo = sorted[0].odometer;
+  let litersSinceRef = 0;
+  let totalDistance = 0;
+  let totalLiters = 0;
+
+  for (let i = 1; i < sorted.length; i++) {
+    litersSinceRef += sorted[i].liters;
+    if (sorted[i].sameLevel) {
+      const distance = sorted[i].odometer - refOdo;
+      if (distance > 0 && litersSinceRef > 0) {
+        totalDistance += distance;
+        totalLiters += litersSinceRef;
+      }
+      refOdo = sorted[i].odometer;
+      litersSinceRef = 0;
+    }
+  }
+
+  if (totalLiters === 0) return null;
+  return totalDistance / totalLiters;
+};
+
+// Per-fill mileage, sorted by odometer ascending. Only fills marked
+// "sameLevel" get a mileage value (km since last same-level reference,
+// divided by total liters added since then).
+export const calculateMileagePerFill = (fuels: FuelRecord[]): (FuelRecord & { mileage: number | null })[] => {
+  const sorted = [...fuels].sort((a, b) => a.odometer - b.odometer);
+  let refOdo = sorted.length ? sorted[0].odometer : 0;
+  let litersSinceRef = 0;
+
+  return sorted.map((f, index) => {
+    if (index === 0) return { ...f, mileage: null };
+    litersSinceRef += f.liters;
+    if (f.sameLevel) {
+      const distance = f.odometer - refOdo;
+      const mileage = distance > 0 && litersSinceRef > 0 ? distance / litersSinceRef : null;
+      refOdo = f.odometer;
+      litersSinceRef = 0;
+      return { ...f, mileage };
+    }
+    return { ...f, mileage: null };
+  });
 };
 
 // Calculate detailed bike health scores

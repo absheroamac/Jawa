@@ -178,7 +178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="metric-box">
           <span className="metric-label">Average Mileage</span>
           <div className="metric-value">
-            {avgMileage.toFixed(1)} <span>km/L</span>
+            {avgMileage ? avgMileage.toFixed(1) : 'N/A'} <span>km/L</span>
           </div>
           <span className="metric-footer">Jawa Target: 32 - 35 km/L</span>
         </div>

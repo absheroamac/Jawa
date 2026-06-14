@@ -203,7 +203,8 @@ export const initialFuelRecords: FuelRecord[] = [
     liters: 12.0,
     pricePerLiter: 104.5,
     totalAmount: 1254.0,
-    location: "Indian Oil, Senapati Bapat Road"
+    location: "Indian Oil, Senapati Bapat Road",
+    sameLevel: true
   },
   {
     id: "fuel-2",
@@ -212,7 +213,8 @@ export const initialFuelRecords: FuelRecord[] = [
     liters: 11.2,
     pricePerLiter: 104.5,
     totalAmount: 1170.4,
-    location: "BPCL, Shivaji Nagar"
+    location: "BPCL, Shivaji Nagar",
+    sameLevel: true
   },
   {
     id: "fuel-3",
@@ -221,7 +223,8 @@ export const initialFuelRecords: FuelRecord[] = [
     liters: 10.5,
     pricePerLiter: 105.2,
     totalAmount: 1104.6,
-    location: "HPCL, Kothrud"
+    location: "HPCL, Kothrud",
+    sameLevel: true
   },
   {
     id: "fuel-4",
@@ -230,7 +233,8 @@ export const initialFuelRecords: FuelRecord[] = [
     liters: 10.8,
     pricePerLiter: 105.2,
     totalAmount: 1136.2,
-    location: "Indian Oil, Senapati Bapat Road"
+    location: "Indian Oil, Senapati Bapat Road",
+    sameLevel: true
   },
   {
     id: "fuel-5",
@@ -239,7 +243,8 @@ export const initialFuelRecords: FuelRecord[] = [
     liters: 11.4,
     pricePerLiter: 106.0,
     totalAmount: 1208.4,
-    location: "BPCL, Shivaji Nagar"
+    location: "BPCL, Shivaji Nagar",
+    sameLevel: true
   }
 ];
 

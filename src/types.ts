@@ -43,6 +43,7 @@ export interface FuelRecord {
   pricePerLiter: number;
   totalAmount: number;
   location: string;
+  sameLevel: boolean;
 }
 
 export interface ExpenseRecord {

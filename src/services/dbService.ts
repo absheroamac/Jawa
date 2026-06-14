@@ -97,6 +97,7 @@ const mapFuelFromDb = (row: any): FuelRecord => ({
   pricePerLiter: Number(row.price_per_liter),
   totalAmount: Number(row.total_amount),
   location: row.location,
+  sameLevel: row.same_level ?? true,
 });
 
 const mapFuelToDb = (f: FuelRecord) => ({
@@ -107,6 +108,7 @@ const mapFuelToDb = (f: FuelRecord) => ({
   price_per_liter: f.pricePerLiter,
   total_amount: f.totalAmount,
   location: f.location,
+  same_level: f.sameLevel,
 });
 
 const mapExpenseFromDb = (row: any): ExpenseRecord => ({

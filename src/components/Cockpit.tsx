@@ -190,7 +190,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
         <div className="premium-stat-card">
           <div className="premium-stat-info">
             <span className="premium-stat-lbl">Predictive Range</span>
-            <span className="premium-stat-val">{fuels.length > 0 ? Math.round((avgMileage || 32.5) * 14) : 450} km</span>
+            <span className="premium-stat-val">{avgMileage ? `${Math.round(avgMileage * 14)} km` : 'N/A'}</span>
           </div>
           <div className="premium-icon-badge" style={{ color: 'var(--color-cyan)' }}>
             <Fuel size={18} />
@@ -206,7 +206,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
             <Gauge size={22} />
           </span>
           <span style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: 'white', marginTop: '0.35rem' }}>
-            {avgMileage ? avgMileage.toFixed(1) : '32.5'}
+            {avgMileage ? avgMileage.toFixed(1) : 'N/A'}
             <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginLeft: '0.15rem' }}> km/L</span>
           </span>
           <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Avg Mileage</span>
