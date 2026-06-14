@@ -524,6 +524,7 @@ function App() {
             fuels={fuels}
             expenses={expenses}
             documents={documents}
+            parts={parts}
             onQuickLube={handleQuickLube}
             onQuickPolish={handleQuickPolish}
             onNavigate={setActiveTab}

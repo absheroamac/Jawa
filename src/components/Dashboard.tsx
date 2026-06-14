@@ -5,7 +5,8 @@ import {
   MaintenanceRecord, 
   FuelRecord, 
   ExpenseRecord,
-  BikeDocument
+  BikeDocument,
+  PartLifecycle
 } from '../types';
 import { 
   calculateCostPerKm, 
@@ -21,6 +22,7 @@ interface DashboardProps {
   fuels: FuelRecord[];
   expenses: ExpenseRecord[];
   documents: BikeDocument[];
+  parts: PartLifecycle[];
   onQuickLube: () => void;
   onQuickPolish: () => void;
   onLogOdo: (odo: number) => void;
@@ -34,6 +36,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   fuels,
   expenses,
   documents,
+  parts,
   onQuickLube,
   onQuickPolish,
   onLogOdo,
@@ -51,7 +54,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   const costPerKm = calculateCostPerKm(profile.currentOdometer, expenses, records, fuels);
   const avgMileage = calculateAverageMileage(fuels);
-  const healthBreakdown = calculateHealthScore(profile, schedules, documents, currentDate);
+  const healthBreakdown = calculateHealthScore(profile, schedules, documents, parts, currentDate);
 
   // Identify high-priority alerts
   const alerts: string[] = [];

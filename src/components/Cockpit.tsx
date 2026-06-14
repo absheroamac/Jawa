@@ -5,7 +5,8 @@ import {
   MaintenanceRecord, 
   FuelRecord, 
   ExpenseRecord,
-  BikeDocument
+  BikeDocument,
+  PartLifecycle
 } from '../types';
 import { 
   calculateAverageMileage, 
@@ -36,6 +37,7 @@ interface CockpitProps {
   fuels: FuelRecord[];
   expenses: ExpenseRecord[];
   documents: BikeDocument[];
+  parts: PartLifecycle[];
   onQuickLube: () => void;
   onQuickPolish: () => void;
   onNavigate: (tab: string) => void;
@@ -48,6 +50,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
   fuels,
   expenses,
   documents,
+  parts,
   onQuickLube,
   onQuickPolish,
   onNavigate
@@ -56,7 +59,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
 
   // Calculations
   const avgMileage = calculateAverageMileage(fuels);
-  const health = calculateHealthScore(profile, schedules, documents, currentDate);
+  const health = calculateHealthScore(profile, schedules, documents, parts, currentDate);
   const costPerKm = calculateCostPerKm(profile.currentOdometer, expenses, records, fuels);
   
   const totalFuel = fuels.reduce((sum, f) => sum + f.totalAmount, 0);

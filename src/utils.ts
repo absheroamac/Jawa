@@ -4,7 +4,8 @@ import {
   MaintenanceRecord, 
   FuelRecord, 
   ExpenseRecord,
-  BikeDocument
+  BikeDocument,
+  PartLifecycle
 } from './types';
 
 // Get difference in days between two dates
@@ -93,6 +94,7 @@ export interface HealthBreakdown {
   chrome: number;
   electrical: number;
   documents: number;
+  parts: number;
   overall: number;
 }
 
@@ -100,6 +102,7 @@ export const calculateHealthScore = (
   profile: MotorcycleProfile,
   schedules: MaintenanceSchedule[],
   documents: BikeDocument[],
+  parts: PartLifecycle[] = [],
   currentDateStr: string = new Date().toISOString().split('T')[0]
 ): HealthBreakdown => {
   // 1. Engine Health Score (Engine Oil, Oil Filter, Coolant, Spark Plug)
@@ -200,13 +203,29 @@ export const calculateHealthScore = (
   });
   documentsScore = Math.max(0, Math.min(100, documentsScore));
 
-  // 6. Overall Health Score
+  // 6. Parts Wear Health Score (chain/sprocket, brake pads, spark plug, tyres etc.)
+  let partsScore = 100;
+  if (parts.length > 0) {
+    const wearPenalties = parts.map(part => {
+      const installedOdo = part.installedDate ? part.installedOdo : 0;
+      const kmDriven = profile.currentOdometer - installedOdo;
+      const usagePercent = Math.min(100, (kmDriven / part.expectedLifespanKm) * 100);
+      if (usagePercent >= 90) return 25 as number; // overdue replacement
+      if (usagePercent >= 70) return 10 as number; // monitor
+      return 0 as number;
+    });
+    partsScore -= wearPenalties.reduce((sum, p) => sum + p, 0);
+  }
+  partsScore = Math.max(0, Math.min(100, partsScore));
+
+  // 7. Overall Health Score
   const overall = Math.round(
-    engineScore * 0.35 +
-    chainScore * 0.25 +
-    chromeScore * 0.15 +
-    electricalScore * 0.15 +
-    documentsScore * 0.1
+    engineScore * 0.3 +
+    chainScore * 0.2 +
+    chromeScore * 0.1 +
+    electricalScore * 0.1 +
+    documentsScore * 0.1 +
+    partsScore * 0.2
   );
 
   return {
@@ -215,6 +234,7 @@ export const calculateHealthScore = (
     chrome: Math.round(chromeScore),
     electrical: Math.round(electricalScore),
     documents: Math.round(documentsScore),
+    parts: Math.round(partsScore),
     overall
   };
 };
