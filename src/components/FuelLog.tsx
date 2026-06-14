@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
 import { MotorcycleProfile, FuelRecord } from '../types';
 import { calculateMileagePerFill } from '../utils';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Calendar, Pencil } from 'lucide-react';
 
 interface FuelLogProps {
   profile: MotorcycleProfile;
   fuels: FuelRecord[];
   onAddFuel: (record: Omit<FuelRecord, 'id'>) => void;
+  onUpdateFuel: (record: FuelRecord) => void;
 }
 
 export const FuelLog: React.FC<FuelLogProps> = ({
   profile,
   fuels,
-  onAddFuel
+  onAddFuel,
+  onUpdateFuel
 }) => {
   const [showLogModal, setShowLogModal] = useState(false);
-  
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   // Form fields
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(profile.currentOdometer.toString());
@@ -26,6 +29,27 @@ export const FuelLog: React.FC<FuelLogProps> = ({
 
   const totalLiters = fuels.reduce((sum, f) => sum + f.liters, 0);
 
+  const resetForm = () => {
+    setEditingId(null);
+    setDate(new Date().toISOString().split('T')[0]);
+    setOdometer(profile.currentOdometer.toString());
+    setLiters('');
+    setPricePerLiter('106.0');
+    setLocation('');
+    setSameLevel(true);
+  };
+
+  const openEditModal = (rec: FuelRecord) => {
+    setEditingId(rec.id);
+    setDate(rec.date);
+    setOdometer(rec.odometer.toString());
+    setLiters(rec.liters.toString());
+    setPricePerLiter(rec.pricePerLiter.toString());
+    setLocation(rec.location);
+    setSameLevel(rec.sameLevel);
+    setShowLogModal(true);
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!liters || !pricePerLiter || !odometer) return;
@@ -34,19 +58,30 @@ export const FuelLog: React.FC<FuelLogProps> = ({
     const priceVal = parseFloat(pricePerLiter);
     const odoVal = parseInt(odometer);
 
-    onAddFuel({
-      date,
-      odometer: odoVal,
-      liters: litVal,
-      pricePerLiter: priceVal,
-      totalAmount: parseFloat((litVal * priceVal).toFixed(2)),
-      location: location || 'Local Petrol Pump',
-      sameLevel
-    });
+    if (editingId) {
+      onUpdateFuel({
+        id: editingId,
+        date,
+        odometer: odoVal,
+        liters: litVal,
+        pricePerLiter: priceVal,
+        totalAmount: parseFloat((litVal * priceVal).toFixed(2)),
+        location: location || 'Local Petrol Pump',
+        sameLevel
+      });
+    } else {
+      onAddFuel({
+        date,
+        odometer: odoVal,
+        liters: litVal,
+        pricePerLiter: priceVal,
+        totalAmount: parseFloat((litVal * priceVal).toFixed(2)),
+        location: location || 'Local Petrol Pump',
+        sameLevel
+      });
+    }
 
-    setLiters('');
-    setLocation('');
-    setSameLevel(true);
+    resetForm();
     setShowLogModal(false);
   };
 
@@ -131,7 +166,7 @@ export const FuelLog: React.FC<FuelLogProps> = ({
     <div>
       <div className="section-header">
         <h2 className="section-title">Fuel Efficiency Tracker</h2>
-        <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} onClick={() => setShowLogModal(true)}>
+        <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} onClick={() => { resetForm(); setShowLogModal(true); }}>
           <Plus size={13} />
           <span>Log Refuel</span>
         </button>
@@ -200,6 +235,15 @@ export const FuelLog: React.FC<FuelLogProps> = ({
                 </span>
               )}
             </div>
+
+            <button
+              className="btn btn-secondary"
+              style={{ alignSelf: 'flex-end', padding: '0.25rem 0.6rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              onClick={() => openEditModal(rec)}
+            >
+              <Pencil size={11} />
+              <span>Edit</span>
+            </button>
           </div>
         ))}
       </div>
@@ -209,8 +253,8 @@ export const FuelLog: React.FC<FuelLogProps> = ({
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>⛽ Log Fuel Refill</h2>
-              <button className="close-btn" onClick={() => setShowLogModal(false)}>&times;</button>
+              <h2>⛽ {editingId ? 'Edit Fuel Refill' : 'Log Fuel Refill'}</h2>
+              <button className="close-btn" onClick={() => { resetForm(); setShowLogModal(false); }}>&times;</button>
             </div>
             <form onSubmit={handleFormSubmit}>
               <div className="modal-body">
@@ -293,8 +337,8 @@ export const FuelLog: React.FC<FuelLogProps> = ({
                 </div>
               </div>
               <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowLogModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Confirm Log</button>
+                <button type="button" className="btn btn-secondary" onClick={() => { resetForm(); setShowLogModal(false); }}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingId ? 'Save Changes' : 'Confirm Log'}</button>
               </div>
             </form>
           </div>

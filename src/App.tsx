@@ -362,6 +362,11 @@ function App() {
     dbService.insertExpense(expense);
   };
 
+  const handleUpdateRecord = (updated: MaintenanceRecord) => {
+    setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
+    dbService.updateRecord(updated);
+  };
+
   const handleUpdateSchedule = (id: string, odo: number, date: string) => {
     setSchedules(prev => 
       prev.map(s => s.id === id ? { ...s, lastPerformedOdo: odo, lastPerformedDate: date } : s)
@@ -399,6 +404,11 @@ function App() {
     dbService.insertExpense(expense);
   };
 
+  const handleUpdateFuel = (updated: FuelRecord) => {
+    setFuels(prev => prev.map(f => f.id === updated.id ? updated : f));
+    dbService.updateFuel(updated);
+  };
+
   const handleAddAdditive = (newAdd: Omit<FuelAdditiveRecord, 'id'>) => {
     const additive: FuelAdditiveRecord = {
       ...newAdd,
@@ -425,6 +435,11 @@ function App() {
     dbService.insertAdditive(additive);
     dbService.updateSchedulePerformance('sch-fuel-sys', newAdd.odometer, newAdd.date);
     dbService.insertExpense(expense);
+  };
+
+  const handleUpdateAdditive = (updated: FuelAdditiveRecord) => {
+    setAdditives(prev => prev.map(a => a.id === updated.id ? updated : a));
+    dbService.updateAdditive(updated);
   };
 
   const handlePolishChrome = (partId: string) => {
@@ -532,14 +547,18 @@ function App() {
             onPolishChrome={handlePolishChrome}
             onInspectChrome={handleInspectChrome}
             onAddAdditive={handleAddAdditive}
+            onUpdateRecord={handleUpdateRecord}
+            onUpdateFuel={handleUpdateFuel}
+            onUpdateAdditive={handleUpdateAdditive}
           />
         );
       case 'fuel':
         return (
-          <FuelLog 
+          <FuelLog
             profile={profile}
             fuels={fuels}
             onAddFuel={handleAddFuel}
+            onUpdateFuel={handleUpdateFuel}
           />
         );
       case 'vault':

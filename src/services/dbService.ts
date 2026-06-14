@@ -327,6 +327,25 @@ export const dbService = {
     return true;
   },
 
+  async updateRecord(record: MaintenanceRecord): Promise<boolean> {
+    if (!hasSupabaseConfig()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase
+      .from('maintenance_records')
+      .update(mapRecordToDb(record))
+      .eq('id', record.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Supabase record update error:', error);
+      return false;
+    }
+    return true;
+  },
+
   // --- Fuel Records ---
   async getFuels(): Promise<FuelRecord[] | null> {
     if (!hasSupabaseConfig()) return null;
@@ -359,6 +378,25 @@ export const dbService = {
 
     if (error) {
       console.error('Supabase fuel insert error:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async updateFuel(fuel: FuelRecord): Promise<boolean> {
+    if (!hasSupabaseConfig()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase
+      .from('fuel_records')
+      .update(mapFuelToDb(fuel))
+      .eq('id', fuel.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Supabase fuel update error:', error);
       return false;
     }
     return true;
@@ -547,6 +585,25 @@ export const dbService = {
 
     if (error) {
       console.error('Supabase additive insert error:', error);
+      return false;
+    }
+    return true;
+  },
+
+  async updateAdditive(additive: FuelAdditiveRecord): Promise<boolean> {
+    if (!hasSupabaseConfig()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase
+      .from('fuel_additive_records')
+      .update(mapAdditiveToDb(additive))
+      .eq('id', additive.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Supabase additive update error:', error);
       return false;
     }
     return true;
