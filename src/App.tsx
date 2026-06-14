@@ -48,10 +48,14 @@ function App() {
   const [additives, setAdditives] = useState<FuelAdditiveRecord[]>([]);
 
   // Navigation tab: 'cockpit' | 'garage' | 'logs' | 'fuel' | 'vault'
-  const [activeTab, setActiveTab] = useState('cockpit');
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('jawa_active_tab') || 'cockpit');
   const [odoInput, setOdoInput] = useState('');
   const [showOdoModal, setShowOdoModal] = useState(false);
   const currentDateStr = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    sessionStorage.setItem('jawa_active_tab', activeTab);
+  }, [activeTab]);
 
   // --- 1. AUTH STATE PERSISTENT LISTENER ---
   useEffect(() => {
