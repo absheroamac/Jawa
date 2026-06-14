@@ -7,7 +7,7 @@ interface GarageProps {
   profile: MotorcycleProfile;
   schedules: MaintenanceSchedule[];
   parts: PartLifecycle[];
-  onReplacePart: (partId: string, brand: string, cost: number, odo: number, date: string) => void;
+  onReplacePart: (partId: string, brand: string, cost: number, odo: number, date: string, lifespanKm: number) => void;
   onUpdateSchedule: (scheduleId: string, odo: number, date: string) => void;
   onAddRecord: (record: Omit<MaintenanceRecord, 'id'>) => void;
 }
@@ -35,6 +35,7 @@ export const Garage: React.FC<GarageProps> = ({
   const [cost, setCost] = useState('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [lifespanKm, setLifespanKm] = useState('');
 
   const currentDate = new Date().toISOString().split('T')[0];
 
@@ -100,12 +101,14 @@ export const Garage: React.FC<GarageProps> = ({
       brand,
       parseFloat(cost),
       parseInt(odometer),
-      date
+      date,
+      lifespanKm ? parseInt(lifespanKm) : selectedPart.expectedLifespanKm
     );
 
     setSelectedPart(null);
     setBrand('');
     setCost('');
+    setLifespanKm('');
     setShowReplaceModal(false);
   };
 
@@ -211,6 +214,8 @@ export const Garage: React.FC<GarageProps> = ({
                     setSelectedPart(part);
                     setBrand(notSet ? '' : part.brand);
                     setOdometer(profile.currentOdometer.toString());
+                    setLifespanKm(part.expectedLifespanKm.toString());
+                    setDate(currentDate);
                     setShowReplaceModal(true);
                   }}
                 >
@@ -350,17 +355,31 @@ export const Garage: React.FC<GarageProps> = ({
                   />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="r-cost">Replacement Cost (₹)</label>
-                  <input 
-                    type="number" 
-                    id="r-cost" 
-                    className="form-control" 
-                    placeholder="e.g. 4500"
-                    value={cost}
-                    onChange={(e) => setCost(e.target.value)}
-                    required
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="r-cost">Replacement Cost (₹)</label>
+                    <input
+                      type="number"
+                      id="r-cost"
+                      className="form-control"
+                      placeholder="e.g. 4500"
+                      value={cost}
+                      onChange={(e) => setCost(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="r-lifespan">Expected Lifespan (km)</label>
+                    <input
+                      type="number"
+                      id="r-lifespan"
+                      className="form-control"
+                      placeholder="e.g. 25000"
+                      value={lifespanKm}
+                      onChange={(e) => setLifespanKm(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
               <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>

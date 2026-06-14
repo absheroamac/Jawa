@@ -348,12 +348,20 @@ export const initialPartsLifecycle: PartLifecycle[] = [
     expectedLifespanKm: 12000
   },
   {
-    id: "prt-tires",
-    name: "Tire Set (Ceat Zoom Cruz)",
+    id: "prt-tire-f",
+    name: "Front Tyre (Ceat Zoom Cruz)",
     brand: "Ceat Zoom Cruz Tubeless",
     installedOdo: 20000,
     installedDate: "2024-11-20",
     expectedLifespanKm: 25000
+  },
+  {
+    id: "prt-tire-r",
+    name: "Rear Tyre (Ceat Zoom Cruz)",
+    brand: "Ceat Zoom Cruz Tubeless",
+    installedOdo: 20000,
+    installedDate: "2024-11-20",
+    expectedLifespanKm: 22000
   }
 ];
 
@@ -426,7 +434,8 @@ export const freshPartsLifecycle: PartLifecycle[] = [
   { id: "prt-brake-f", name: "Front Brake Pads",      brand: "—", installedOdo: 0, installedDate: "", expectedLifespanKm: 8000 },
   { id: "prt-brake-r", name: "Rear Brake Shoes",      brand: "—", installedOdo: 0, installedDate: "", expectedLifespanKm: 15000 },
   { id: "prt-spark",   name: "Spark Plug",             brand: "—", installedOdo: 0, installedDate: "", expectedLifespanKm: 12000 },
-  { id: "prt-tires",   name: "Tire Set",               brand: "—", installedOdo: 0, installedDate: "", expectedLifespanKm: 25000 },
+  { id: "prt-tire-f",  name: "Front Tyre",             brand: "—", installedOdo: 0, installedDate: "", expectedLifespanKm: 25000 },
+  { id: "prt-tire-r",  name: "Rear Tyre",              brand: "—", installedOdo: 0, installedDate: "", expectedLifespanKm: 22000 },
 ];
 
 export const freshDocuments: BikeDocument[] = [

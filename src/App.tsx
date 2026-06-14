@@ -438,15 +438,15 @@ function App() {
     dbService.updateSchedulePerformance('sch-rust', profile.currentOdometer, currentDateStr);
   };
 
-  const handleReplacePart = (partId: string, brand: string, cost: number, odo: number, date: string) => {
-    const updatedParts = parts.map(p => p.id === partId ? { ...p, brand, installedOdo: odo, installedDate: date } : p);
+  const handleReplacePart = (partId: string, brand: string, cost: number, odo: number, date: string, lifespanKm: number) => {
+    const updatedParts = parts.map(p => p.id === partId ? { ...p, brand, installedOdo: odo, installedDate: date, expectedLifespanKm: lifespanKm } : p);
     setParts(updatedParts);
 
     // Add to maintenance records
     handleAddMaintRecord({
       date,
       odometer: odo,
-      category: partId === 'prt-spark' || partId === 'prt-chain' ? 'Engine' : partId.includes('brake') ? 'Brakes' : 'Tires',
+      category: partId === 'prt-spark' || partId === 'prt-chain' ? 'Engine' : partId.includes('brake') ? 'Brakes' : partId.includes('tire') ? 'Tires' : 'General',
       type: `Swapped: ${parts.find(p => p.id === partId)?.name}`,
       description: `Swapped worn out item for brand new: ${brand}.`,
       workshopName: 'Self Garage',
