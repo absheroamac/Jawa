@@ -40,11 +40,12 @@ export const Garage: React.FC<GarageProps> = ({
   const currentDate = new Date().toISOString().split('T')[0];
 
   const getPartLifecycle = (part: PartLifecycle) => {
-    const notSet = !part.installedDate || part.installedOdo === 0;
-    if (notSet) {
-      return { kmDriven: 0, remainingKm: null, usagePercent: 0, status: 'Not Set', statusClass: 'badge-neutral', barColor: 'progress-green', notSet: true };
-    }
-    const kmDriven = profile.currentOdometer - part.installedOdo;
+    // If a part has never been replaced, assume it's the original part
+    // fitted since the vehicle was purchased (installedOdo: 0, installedDate: purchase date).
+    const isOriginal = !part.installedDate;
+    const installedOdo = isOriginal ? 0 : part.installedOdo;
+
+    const kmDriven = profile.currentOdometer - installedOdo;
     const remainingKm = Math.max(0, part.expectedLifespanKm - kmDriven);
     const usagePercent = Math.min(100, (kmDriven / part.expectedLifespanKm) * 100);
 
@@ -62,7 +63,7 @@ export const Garage: React.FC<GarageProps> = ({
       barColor = 'progress-amber';
     }
 
-    return { kmDriven, remainingKm, usagePercent, status, statusClass, barColor, notSet: false };
+    return { kmDriven, remainingKm, usagePercent, status, statusClass, barColor, notSet: false, isOriginal };
   };
 
   const getScheduleProgress = (s: MaintenanceSchedule) => {
@@ -167,7 +168,7 @@ export const Garage: React.FC<GarageProps> = ({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '2.5rem' }}>
         {parts.map(part => {
-          const { kmDriven, remainingKm, usagePercent, status, statusClass, barColor, notSet } = getPartLifecycle(part);
+          const { kmDriven, remainingKm, usagePercent, status, statusClass, barColor, isOriginal } = getPartLifecycle(part);
           return (
             <div className="glass-card" key={part.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -176,7 +177,7 @@ export const Garage: React.FC<GarageProps> = ({
                     {part.name}
                   </h4>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {notSet ? 'Brand not set — log a swap to track lifespan' : `Brand: ${part.brand}`}
+                    {isOriginal ? `Original part (since purchase: ${profile.purchaseDate})` : `Brand: ${part.brand}`}
                   </span>
                 </div>
                 <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem' }}>
@@ -184,42 +185,34 @@ export const Garage: React.FC<GarageProps> = ({
                 </span>
               </div>
 
-              {notSet ? (
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
-                  Tap <strong style={{ color: 'var(--text-secondary)' }}>Log Swap</strong> to record when this part was installed and start tracking its lifespan.
+              <div className="progress-container">
+                <div className="progress-header">
+                  <span>Target lifespan: {part.expectedLifespanKm.toLocaleString()} km</span>
+                  <span>{kmDriven.toLocaleString()} km used ({Math.round(usagePercent)}%)</span>
                 </div>
-              ) : (
-                <div className="progress-container">
-                  <div className="progress-header">
-                    <span>Target lifespan: {part.expectedLifespanKm.toLocaleString()} km</span>
-                    <span>{kmDriven.toLocaleString()} km used ({Math.round(usagePercent)}%)</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className={`progress-bar ${barColor}`} style={{ width: `${usagePercent}%` }}></div>
-                  </div>
+                <div className="progress-track">
+                  <div className={`progress-bar ${barColor}`} style={{ width: `${usagePercent}%` }}></div>
                 </div>
-              )}
+              </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                {!notSet && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Clock size={11} style={{ opacity: 0.6 }} />
-                    <span>Remaining: <strong style={{ color: (remainingKm ?? 0) < 1500 ? 'var(--color-crimson-bright)' : 'white' }}>{remainingKm?.toLocaleString()} km</strong></span>
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Clock size={11} style={{ opacity: 0.6 }} />
+                  <span>Remaining: <strong style={{ color: (remainingKm ?? 0) < 1500 ? 'var(--color-crimson-bright)' : 'white' }}>{remainingKm?.toLocaleString()} km</strong></span>
+                </div>
                 <button
                   className="btn btn-secondary"
                   style={{ padding: '0.3rem 0.65rem', fontSize: '0.7rem', marginLeft: 'auto' }}
                   onClick={() => {
                     setSelectedPart(part);
-                    setBrand(notSet ? '' : part.brand);
+                    setBrand(isOriginal ? '' : part.brand);
                     setOdometer(profile.currentOdometer.toString());
                     setLifespanKm(part.expectedLifespanKm.toString());
                     setDate(currentDate);
                     setShowReplaceModal(true);
                   }}
                 >
-                  {notSet ? '+ Log Swap' : 'Swap Part'}
+                  Swap Part
                 </button>
               </div>
             </div>
