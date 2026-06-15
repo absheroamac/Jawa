@@ -72,7 +72,8 @@ function App() {
 
     // Listen for auth state modifications
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-      setUser(session?.user ?? null);
+      const newUser = session?.user ?? null;
+      setUser((prev: any) => (prev?.id === newUser?.id ? prev : newUser));
     });
 
     return () => subscription.unsubscribe();
