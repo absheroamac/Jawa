@@ -35,21 +35,27 @@ export const Vault: React.FC<VaultProps> = ({
   const currentDate = new Date().toISOString().split('T')[0];
 
   // Expense Aggregation for Donut
+  // fuels[] and records[] are the source of truth for Fuel/Service/Repairs/Washing.
+  // expenses[] only contributes the remaining manual categories (Insurance, Accessories, etc.)
+  // to avoid double-counting (every fuel/service auto-creates an expense entry).
+  const AUTO_CATEGORIES = new Set(['Fuel', 'Service', 'Repairs', 'Washing']);
   const categoriesMap: Record<string, number> = {};
+
   expenses.forEach(e => {
-    categoriesMap[e.category] = (categoriesMap[e.category] || 0) + e.amount;
-  });
-  const totalFuelCost = fuels.reduce((sum, f) => sum + f.totalAmount, 0);
-  if (totalFuelCost > 0) {
-    categoriesMap['Fuel'] = (categoriesMap['Fuel'] || 0) + totalFuelCost;
-  }
-  records.forEach(r => {
-    const cost = r.cost;
-    if (r.type.toLowerCase().includes('repair') || r.description?.toLowerCase().includes('repair')) {
-      categoriesMap['Repairs'] = (categoriesMap['Repairs'] || 0) + cost;
-    } else {
-      categoriesMap['Service'] = (categoriesMap['Service'] || 0) + cost;
+    if (!AUTO_CATEGORIES.has(e.category)) {
+      categoriesMap[e.category] = (categoriesMap[e.category] || 0) + e.amount;
     }
+  });
+
+  const totalFuelCost = fuels.reduce((sum, f) => sum + f.totalAmount, 0);
+  if (totalFuelCost > 0) categoriesMap['Fuel'] = totalFuelCost;
+
+  records.forEach(r => {
+    if (r.cost <= 0) return;
+    const isRepair = r.type.toLowerCase().includes('repair') || r.description?.toLowerCase().includes('repair');
+    const isWash = r.category === 'General' && r.type.toLowerCase().includes('wash');
+    const bucket = isRepair ? 'Repairs' : isWash ? 'Washing' : 'Service';
+    categoriesMap[bucket] = (categoriesMap[bucket] || 0) + r.cost;
   });
 
   const categoryEntries = Object.entries(categoriesMap)
