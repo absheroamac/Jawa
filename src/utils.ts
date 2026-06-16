@@ -157,34 +157,44 @@ export const calculateHealthScore = (
   chainScore = Math.max(0, Math.min(100, chainScore));
 
   // 3. Chrome Health Score (Polishing & Inspections)
-  let chromeScore = 100;
+  // Start at 70 if never logged — "unknown" is not the same as perfect
   const polishSchedule = schedules.find(s => s.id === "sch-polish");
+  const rustSchedule = schedules.find(s => s.id === "sch-rust");
+  const chromeNeverLogged = !polishSchedule?.lastPerformedDate && !rustSchedule?.lastPerformedDate;
+  let chromeScore = chromeNeverLogged ? 70 : 100;
+
   if (polishSchedule && polishSchedule.lastPerformedDate) {
     const daysSincePolish = getDaysDiff(polishSchedule.lastPerformedDate, currentDateStr);
     const polishOverdue = daysSincePolish - (polishSchedule.intervalDays || 30);
     if (polishOverdue > 0) {
-      chromeScore -= Math.min(polishOverdue * 1.5, 60); // Max 60% penalty
+      chromeScore -= Math.min(polishOverdue * 1.5, 60);
     }
+  } else if (polishSchedule && !polishSchedule.lastPerformedDate) {
+    chromeScore -= 20; // never polished penalty
   }
 
-  const rustSchedule = schedules.find(s => s.id === "sch-rust");
   if (rustSchedule && rustSchedule.lastPerformedDate) {
     const daysSinceRust = getDaysDiff(rustSchedule.lastPerformedDate, currentDateStr);
     const rustOverdue = daysSinceRust - (rustSchedule.intervalDays || 45);
     if (rustOverdue > 0) {
-      chromeScore -= Math.min(rustOverdue * 1.0, 40); // Max 40% penalty
+      chromeScore -= Math.min(rustOverdue * 1.0, 40);
     }
+  } else if (rustSchedule && !rustSchedule.lastPerformedDate) {
+    chromeScore -= 15; // never inspected penalty
   }
+
   chromeScore = Math.max(0, Math.min(100, chromeScore));
 
   // 4. Electrical Health Score (Battery Checks)
-  let electricalScore = 100;
+  // Start at 70 if never inspected
   const batterySchedule = schedules.find(s => s.id === "sch-battery");
+  let electricalScore = batterySchedule && !batterySchedule.lastPerformedDate ? 70 : 100;
+
   if (batterySchedule && batterySchedule.lastPerformedDate) {
     const daysSinceBattery = getDaysDiff(batterySchedule.lastPerformedDate, currentDateStr);
     const batteryOverdue = daysSinceBattery - (batterySchedule.intervalDays || 90);
     if (batteryOverdue > 0) {
-      electricalScore -= Math.min(batteryOverdue * 0.8, 50); // Max 50% penalty
+      electricalScore -= Math.min(batteryOverdue * 0.8, 50);
     }
   }
   electricalScore = Math.max(0, Math.min(100, electricalScore));
