@@ -422,6 +422,25 @@ export const dbService = {
     return data ? data.map(mapExpenseFromDb) : [];
   },
 
+  async updateExpense(expense: ExpenseRecord): Promise<boolean> {
+    if (!hasSupabaseConfig()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase
+      .from('expense_records')
+      .update(mapExpenseToDb(expense))
+      .eq('id', expense.id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Supabase expense update error:', error);
+      return false;
+    }
+    return true;
+  },
+
   async insertExpense(expense: ExpenseRecord): Promise<boolean> {
     if (!hasSupabaseConfig()) return false;
 

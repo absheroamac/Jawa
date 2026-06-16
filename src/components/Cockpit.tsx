@@ -64,8 +64,21 @@ export const Cockpit: React.FC<CockpitProps> = ({
   
   const totalFuel = fuels.reduce((sum, f) => sum + f.totalAmount, 0);
   const totalMaint = records.reduce((sum, r) => sum + r.cost, 0);
-  const totalOtherExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalOtherExpenses = expenses
+    .filter(e => e.category !== 'Fuel')
+    .reduce((sum, e) => sum + e.amount, 0);
   const totalTCO = totalOtherExpenses + totalMaint + totalFuel;
+
+  // Predictive remaining range: (avg km/L × full-tank capacity) − km driven since last full fill
+  const TANK_CAPACITY = 14;
+  const sortedFuels = [...fuels].sort((a, b) => a.odometer - b.odometer);
+  const lastFullFill = [...sortedFuels].reverse().find(f => f.sameLevel);
+  const kmSinceLastFill = lastFullFill ? profile.currentOdometer - lastFullFill.odometer : null;
+  const predictiveRange = avgMileage && kmSinceLastFill !== null
+    ? Math.max(0, Math.round(avgMileage * TANK_CAPACITY - kmSinceLastFill))
+    : avgMileage
+      ? Math.round(avgMileage * TANK_CAPACITY)
+      : null;
 
   // ECU fault codes generator
   interface FaultCode {
@@ -78,50 +91,59 @@ export const Cockpit: React.FC<CockpitProps> = ({
 
   const faultCodes: FaultCode[] = [];
 
-  // Lube fault check
-  const lubeSchedule = schedules.find(s => s.id === "sch-lube");
-  if (lubeSchedule && lubeSchedule.lastPerformedOdo) {
-    const kmSinceLube = profile.currentOdometer - lubeSchedule.lastPerformedOdo;
-    if (kmSinceLube >= (lubeSchedule.intervalKm || 500)) {
-      faultCodes.push({
-        code: "ERR-CHN-500",
-        description: `Chain clean & lubrication overdue by ${kmSinceLube - 500} km`,
-        severity: 'ERROR',
-        action: onQuickLube,
-        actionLabel: "🔧 Lube Chain"
-      });
+  // Helper: km-based schedule overdue check
+  const checkKmSchedule = (
+    id: string, code: string, label: string,
+    action: () => void, actionLabel: string,
+    severity: 'ERROR' | 'WARNING' = 'ERROR'
+  ) => {
+    const sch = schedules.find(s => s.id === id);
+    if (!sch?.lastPerformedOdo) return;
+    const interval = sch.intervalKm || 0;
+    const overdue = (profile.currentOdometer - sch.lastPerformedOdo) - interval;
+    if (overdue >= 0) {
+      faultCodes.push({ code, description: `${label} overdue by ${overdue} km`, severity, action, actionLabel });
     }
-  }
+  };
 
-  // Oil fault check
-  const oilSchedule = schedules.find(s => s.id === "sch-oil");
-  if (oilSchedule && oilSchedule.lastPerformedOdo) {
-    const kmSinceOil = profile.currentOdometer - oilSchedule.lastPerformedOdo;
-    if (kmSinceOil >= (oilSchedule.intervalKm || 5000)) {
-      faultCodes.push({
-        code: "ERR-ENG-010",
-        description: `Engine oil change overdue by ${kmSinceOil - 5000} km`,
-        severity: 'ERROR',
-        action: () => onNavigate('garage'),
-        actionLabel: "🛠️ Open Garage"
-      });
+  // Helper: day-based schedule overdue check
+  const checkDaySchedule = (
+    id: string, code: string, label: string,
+    action: () => void, actionLabel: string,
+    severity: 'ERROR' | 'WARNING' = 'WARNING'
+  ) => {
+    const sch = schedules.find(s => s.id === id);
+    if (!sch?.lastPerformedDate) return;
+    const interval = sch.intervalDays || 0;
+    const overdue = getDaysDiff(sch.lastPerformedDate, currentDate) - interval;
+    if (overdue >= 0) {
+      faultCodes.push({ code, description: `${label} overdue by ${overdue} days`, severity, action, actionLabel });
     }
-  }
+  };
 
-  // Chrome polish check
-  const polishSchedule = schedules.find(s => s.id === "sch-polish");
-  if (polishSchedule && polishSchedule.lastPerformedDate) {
-    const daysSincePolish = getDaysDiff(polishSchedule.lastPerformedDate, currentDate);
-    if (daysSincePolish >= (polishSchedule.intervalDays || 30)) {
+  checkKmSchedule('sch-oil',      'ERR-ENG-010', 'Engine oil change',          () => onNavigate('garage'), 'Open Garage');
+  checkKmSchedule('sch-filter',   'ERR-ENG-020', 'Oil filter change',           () => onNavigate('garage'), 'Open Garage');
+  checkKmSchedule('sch-lube',     'ERR-CHN-500', 'Chain clean & lubrication',   onQuickLube,                'Lube Chain');
+  checkKmSchedule('sch-adjust',   'WARN-CHN-100','Chain tension adjustment',    () => onNavigate('garage'), 'Open Garage', 'WARNING');
+  checkKmSchedule('sch-fuel-sys', 'WARN-FUL-400','Fuel system cleaner (additive)', () => onNavigate('fuel'), 'Fuel Log', 'WARNING');
+  checkDaySchedule('sch-polish',  'WARN-CHM-030','Chrome polish',               onQuickPolish,              'Polish Chrome');
+  checkDaySchedule('sch-rust',    'WARN-CHM-045','Rust & corrosion inspection', () => onNavigate('logs'),   'View Logs');
+  checkDaySchedule('sch-battery', 'WARN-ELC-090','Battery inspection',          () => onNavigate('garage'), 'Open Garage');
+
+  // Parts wear check — warn when any part hits 90%+ of lifespan
+  parts.forEach(part => {
+    const kmDriven = profile.currentOdometer - part.installedOdo;
+    const usagePercent = Math.min(100, (kmDriven / part.expectedLifespanKm) * 100);
+    if (usagePercent >= 90) {
       faultCodes.push({
-        code: "WARN-CHM-030",
-        description: `Chrome polish overdue (${daysSincePolish} days since last wax)`,
+        code: 'WARN-PRT-090',
+        description: `${part.name} at ${Math.round(usagePercent)}% life — replacement due soon`,
         severity: 'WARNING',
-        action: onQuickPolish,
-        actionLabel: "✨ Polish Chrome"
+        action: () => onNavigate('garage'),
+        actionLabel: 'Open Garage'
       });
     }
-  }
+  });
 
   // Documents check
   documents.forEach(doc => {
@@ -132,7 +154,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
         description: `CRITICAL: ${doc.name} has EXPIRED!`,
         severity: 'ERROR',
         action: () => onNavigate('vault'),
-        actionLabel: "📄 Expiry Vault"
+        actionLabel: "Expiry Vault"
       });
     } else if (daysLeft <= 15) {
       faultCodes.push({
@@ -140,7 +162,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
         description: `Certificate ${doc.name} expiring in ${daysLeft} days`,
         severity: 'WARNING',
         action: () => onNavigate('vault'),
-        actionLabel: "📄 Review Vault"
+        actionLabel: "Review Vault"
       });
     }
   });
@@ -193,7 +215,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
         <div className="premium-stat-card">
           <div className="premium-stat-info">
             <span className="premium-stat-lbl">Predictive Range</span>
-            <span className="premium-stat-val">{avgMileage ? `${Math.round(avgMileage * 14)} km` : 'N/A'}</span>
+            <span className="premium-stat-val">{predictiveRange !== null ? `${predictiveRange} km` : 'N/A'}</span>
           </div>
           <div className="premium-icon-badge" style={{ color: 'var(--color-cyan)' }}>
             <Fuel size={18} />
@@ -302,7 +324,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
                   className="ecu-fault-btn" 
                   onClick={f.action}
                 >
-                  {f.actionLabel.replace(/[^\w\s]/g, '').trim()}
+                  {f.actionLabel}
                 </button>
               </div>
             ))}
@@ -311,7 +333,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
         
         {/* Simple metadata count to ensure compliance with records/expenses props in CockpitProps */}
         <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'right', opacity: 0.7 }}>
-          {records.length} service logs • {expenses.length} expense entries
+          {records.length} service logs • {expenses.filter(e => e.category !== 'Fuel').length} expense entries
         </div>
       </div>
 
@@ -331,7 +353,13 @@ export const Cockpit: React.FC<CockpitProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.65rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, fontFamily: 'var(--font-display)', color: 'white' }}>Engine & Spark</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                Oil Change: {5000 - (profile.currentOdometer - (schedules.find(s => s.id === "sch-oil")?.lastPerformedOdo || 0))} km left
+                {(() => {
+                  const sch = schedules.find(s => s.id === "sch-oil");
+                  if (!sch?.lastPerformedOdo) return 'Oil change: never logged';
+                  const interval = sch.intervalKm || 5000;
+                  const kmLeft = interval - (profile.currentOdometer - sch.lastPerformedOdo);
+                  return kmLeft > 0 ? `Oil change: ${kmLeft} km left` : `Oil change: ${Math.abs(kmLeft)} km overdue`;
+                })()}
               </span>
             </div>
           </div>
@@ -356,7 +384,23 @@ export const Cockpit: React.FC<CockpitProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.65rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, fontFamily: 'var(--font-display)', color: 'white' }}>Sprocket & Chain</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                Last clean/lube: {profile.currentOdometer - (schedules.find(s => s.id === "sch-lube")?.lastPerformedOdo || 0)} km ago
+                {(() => {
+                  const lube = schedules.find(s => s.id === "sch-lube");
+                  const adjust = schedules.find(s => s.id === "sch-adjust");
+                  const lubeLine = lube?.lastPerformedOdo
+                    ? `Lube: ${profile.currentOdometer - lube.lastPerformedOdo} km ago`
+                    : 'Lube: never logged';
+                  const adjustInterval = adjust?.intervalKm || 1000;
+                  const adjustLeft = adjust?.lastPerformedOdo
+                    ? adjustInterval - (profile.currentOdometer - adjust.lastPerformedOdo)
+                    : null;
+                  const tensionLine = adjustLeft === null
+                    ? 'Tension: never logged'
+                    : adjustLeft > 0
+                      ? `Tension: ${adjustLeft} km left`
+                      : `Tension: ${Math.abs(adjustLeft)} km overdue`;
+                  return `${lubeLine} · ${tensionLine}`;
+                })()}
               </span>
             </div>
           </div>
@@ -381,7 +425,11 @@ export const Cockpit: React.FC<CockpitProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.65rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, fontFamily: 'var(--font-display)', color: 'white' }}>Chrome & Metal</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                Last polish: {getDaysDiff(schedules.find(s => s.id === "sch-polish")?.lastPerformedDate || currentDate, currentDate)} days ago
+                {(() => {
+                  const sch = schedules.find(s => s.id === "sch-polish");
+                  if (!sch?.lastPerformedDate) return 'Polish: never logged';
+                  return `Last polish: ${getDaysDiff(sch.lastPerformedDate, currentDate)} days ago`;
+                })()}
               </span>
             </div>
           </div>
@@ -406,7 +454,16 @@ export const Cockpit: React.FC<CockpitProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.65rem' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, fontFamily: 'var(--font-display)', color: 'white' }}>Battery & Spark</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                Exide Battery: Healthy (Swapped Jan 2026)
+                {(() => {
+                  const sch = schedules.find(s => s.id === "sch-battery");
+                  if (!sch?.lastPerformedDate) return 'Battery: never inspected';
+                  const daysSince = getDaysDiff(sch.lastPerformedDate, currentDate);
+                  const interval = sch.intervalDays || 90;
+                  const daysLeft = interval - daysSince;
+                  return daysLeft > 0
+                    ? `Battery inspection: ${daysLeft} days left`
+                    : `Battery inspection: ${Math.abs(daysLeft)} days overdue`;
+                })()}
               </span>
             </div>
           </div>

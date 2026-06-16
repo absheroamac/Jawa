@@ -410,7 +410,26 @@ function App() {
   };
 
   const handleUpdateFuel = (updated: FuelRecord) => {
+    const old = fuels.find(f => f.id === updated.id);
     setFuels(prev => prev.map(f => f.id === updated.id ? updated : f));
+
+    // Sync the linked fuel expense record (matched by category + date + old amount)
+    if (old) {
+      setExpenses(prev => prev.map(e => {
+        if (e.category === 'Fuel' && e.date === old.date && e.amount === old.totalAmount) {
+          const updatedExpense = {
+            ...e,
+            date: updated.date,
+            amount: updated.totalAmount,
+            notes: `Refuel ${updated.liters}L @ ${updated.location}`
+          };
+          dbService.updateExpense(updatedExpense);
+          return updatedExpense;
+        }
+        return e;
+      }));
+    }
+
     dbService.updateFuel(updated);
   };
 
