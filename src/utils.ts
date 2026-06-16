@@ -25,14 +25,15 @@ export const calculateCostPerKm = (
 ): number => {
   if (currentOdo <= 0) return 0;
   
-  const totalExpenses = expenses
-    .filter(e => e.category !== 'Registration' && e.category !== 'Fuel')
+  const AUTO_CATEGORIES = new Set(['Fuel', 'Service', 'Repairs', 'Washing', 'Registration']);
+  const totalOtherExpenses = expenses
+    .filter(e => !AUTO_CATEGORIES.has(e.category))
     .reduce((sum, e) => sum + e.amount, 0);
 
   const totalMaint = records.reduce((sum, r) => sum + r.cost, 0);
   const totalFuel = fuels.reduce((sum, f) => sum + f.totalAmount, 0);
 
-  return (totalExpenses + totalMaint + totalFuel) / currentOdo;
+  return (totalOtherExpenses + totalMaint + totalFuel) / currentOdo;
 };
 
 // Mileage is only trustworthy between two fills where the tank was brought back

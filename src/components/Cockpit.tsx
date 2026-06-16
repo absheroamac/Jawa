@@ -62,12 +62,15 @@ export const Cockpit: React.FC<CockpitProps> = ({
   const health = calculateHealthScore(profile, schedules, documents, parts, currentDate);
   const costPerKm = calculateCostPerKm(profile.currentOdometer, expenses, records, fuels);
   
+  // Same logic as Vault TCO — fuels[] and records[] are source of truth;
+  // expenses[] only contributes manual categories to avoid double-counting.
+  const AUTO_EXPENSE_CATEGORIES = new Set(['Fuel', 'Service', 'Repairs', 'Washing']);
   const totalFuel = fuels.reduce((sum, f) => sum + f.totalAmount, 0);
   const totalMaint = records.reduce((sum, r) => sum + r.cost, 0);
   const totalOtherExpenses = expenses
-    .filter(e => e.category !== 'Fuel')
+    .filter(e => !AUTO_EXPENSE_CATEGORIES.has(e.category))
     .reduce((sum, e) => sum + e.amount, 0);
-  const totalTCO = totalOtherExpenses + totalMaint + totalFuel;
+  const totalTCO = totalFuel + totalMaint + totalOtherExpenses;
 
   // Predictive remaining range: (avg km/L × full-tank capacity) − km driven since last full fill
   const TANK_CAPACITY = 14;
