@@ -53,6 +53,47 @@ function App() {
   const [showOdoModal, setShowOdoModal] = useState(false);
   const currentDateStr = new Date().toISOString().split('T')[0];
 
+  // General Service Modal States
+  const [showGeneralServiceModal, setShowGeneralServiceModal] = useState(false);
+  const [gsDate, setGsDate] = useState(currentDateStr);
+  const [gsOdo, setGsOdo] = useState(profile.currentOdometer.toString());
+  const [gsCost, setGsCost] = useState('');
+  const [gsWorkshop, setGsWorkshop] = useState('Classic Jawa Service');
+  const [gsDesc, setGsDesc] = useState('Scheduled 6,000 km / 6 months general service checkup');
+  const [gsNotes, setGsNotes] = useState('');
+
+  // Update gsOdo and date defaults when profile or dates update
+  useEffect(() => {
+    setGsOdo(profile.currentOdometer.toString());
+  }, [profile.currentOdometer]);
+
+  const handleGeneralServiceSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const costVal = parseFloat(gsCost);
+    const odoVal = parseInt(gsOdo);
+    if (isNaN(costVal) || isNaN(odoVal)) return;
+
+    handleAddMaintRecord({
+      date: gsDate,
+      odometer: odoVal,
+      category: 'General',
+      type: 'General Service',
+      description: gsDesc || 'Routine General Service',
+      workshopName: gsWorkshop || 'Classic Jawa Service',
+      cost: costVal,
+      notes: gsNotes || undefined
+    });
+
+    handleUpdateSchedule('sch-general', odoVal, gsDate);
+
+    // Reset Form
+    setGsCost('');
+    setGsNotes('');
+    setGsDesc('Scheduled 6,000 km / 6 months general service checkup');
+    setGsWorkshop('Classic Jawa Service');
+    setShowGeneralServiceModal(false);
+  };
+
   useEffect(() => {
     sessionStorage.setItem('jawa_active_tab', activeTab);
   }, [activeTab]);
@@ -143,7 +184,15 @@ function App() {
             await dbService.upsertSchedules(freshSchedules);
             setSchedules(freshSchedules);
           } else {
-            setSchedules(dbSchedules);
+            // Check if any freshSchedules are missing from dbSchedules (e.g. sch-general)
+            const missingSchedules = freshSchedules.filter(fs => !dbSchedules.some(ds => ds.id === fs.id));
+            if (missingSchedules.length > 0) {
+              const merged = [...dbSchedules, ...missingSchedules];
+              await dbService.upsertSchedules(merged);
+              setSchedules(merged);
+            } else {
+              setSchedules(dbSchedules);
+            }
           }
           if (!dbChrome?.length) {
             await dbService.upsertChromeParts(freshChromeParts);
@@ -191,7 +240,17 @@ function App() {
           const localAdditives = localStorage.getItem('jawa_additives');
           
           if (localProfile) setProfile(JSON.parse(localProfile));
-          if (localSchedules) setSchedules(JSON.parse(localSchedules));
+          if (localSchedules) {
+            const parsed: MaintenanceSchedule[] = JSON.parse(localSchedules);
+            // Check if any freshSchedules are missing from localSchedules (e.g. sch-general)
+            const missingSchedules = freshSchedules.filter(fs => !parsed.some(ds => ds.id === fs.id));
+            if (missingSchedules.length > 0) {
+              const merged = [...parsed, ...missingSchedules];
+              setSchedules(merged);
+            } else {
+              setSchedules(parsed);
+            }
+          }
           if (localRecords) setRecords(JSON.parse(localRecords));
           if (localFuels) setFuels(JSON.parse(localFuels));
           if (localExpenses) setExpenses(JSON.parse(localExpenses));
@@ -352,12 +411,30 @@ function App() {
     };
     setRecords(prev => [...prev, record]);
 
+    // Automatically adjust profile Odometer if record odometer is higher
+    let updatedProfile = profile;
+    if (newRec.odometer > profile.currentOdometer) {
+      updatedProfile = { ...profile, currentOdometer: newRec.odometer };
+      setProfile(updatedProfile);
+      dbService.updateProfile(updatedProfile).catch(err => console.error("Database update error:", err));
+    }
+
+    // Determine correct expense category to reflect correctly in breakdowns
+    const typeLower = newRec.type.toLowerCase();
+    const descLower = (newRec.description || '').toLowerCase();
+    let expenseCategory: 'Washing' | 'Repairs' | 'Service' = 'Service';
+    if (typeLower.includes('wash') || descLower.includes('wash') || (newRec.category === 'General' && typeLower.includes('wash'))) {
+      expenseCategory = 'Washing';
+    } else if (typeLower.includes('repair') || descLower.includes('repair')) {
+      expenseCategory = 'Repairs';
+    }
+
     // Also update expenses under Service / Repairs categories
     const expense: ExpenseRecord = {
       id: `exp-m-${Date.now()}`,
       date: newRec.date,
       amount: newRec.cost,
-      category: newRec.category === 'General' ? 'Washing' : newRec.type.toLowerCase().includes('repair') ? 'Repairs' : 'Service',
+      category: expenseCategory,
       notes: `Service Bill: ${newRec.type}`
     };
     setExpenses(prev => [...prev, expense]);
@@ -548,6 +625,15 @@ function App() {
             onQuickLube={handleQuickLube}
             onQuickPolish={handleQuickPolish}
             onNavigate={setActiveTab}
+            onLogGeneralService={() => {
+              setGsDate(new Date().toISOString().split('T')[0]);
+              setGsOdo(profile.currentOdometer.toString());
+              setGsCost('');
+              setGsWorkshop('Classic Jawa Service');
+              setGsDesc('Scheduled 6,000 km / 6 months general service checkup');
+              setGsNotes('');
+              setShowGeneralServiceModal(true);
+            }}
           />
         );
       case 'garage':
@@ -753,6 +839,103 @@ function App() {
               <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowOdoModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Global General Service Modal */}
+      {showGeneralServiceModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wrench size={20} style={{ color: 'var(--color-cyan)' }} />
+                <span>Log General Service</span>
+              </h2>
+              <button className="close-btn" onClick={() => setShowGeneralServiceModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleGeneralServiceSubmit}>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="gs-date">Service Date</label>
+                    <input 
+                      type="date" 
+                      id="gs-date" 
+                      className="form-control" 
+                      value={gsDate}
+                      onChange={(e) => setGsDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="gs-odo">Odometer (km)</label>
+                    <input 
+                      type="number" 
+                      id="gs-odo" 
+                      className="form-control" 
+                      value={gsOdo}
+                      onChange={(e) => setGsOdo(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="gs-cost">Total Cost (₹)</label>
+                    <input 
+                      type="number" 
+                      id="gs-cost" 
+                      className="form-control" 
+                      placeholder="e.g. 3500"
+                      value={gsCost}
+                      onChange={(e) => setGsCost(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="gs-workshop">Workshop Name</label>
+                    <input 
+                      type="text" 
+                      id="gs-workshop" 
+                      className="form-control" 
+                      placeholder="Classic Jawa Service"
+                      value={gsWorkshop}
+                      onChange={(e) => setGsWorkshop(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="gs-desc">Service Description</label>
+                  <textarea 
+                    id="gs-desc" 
+                    className="form-control" 
+                    rows={3}
+                    placeholder="Details about items checked, replaced or tweaked..."
+                    value={gsDesc}
+                    onChange={(e) => setGsDesc(e.target.value)}
+                  ></textarea>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="gs-notes">Additional Notes</label>
+                  <input 
+                    type="text" 
+                    id="gs-notes" 
+                    className="form-control" 
+                    placeholder="e.g. Replaced engine oil, checked air filter"
+                    value={gsNotes}
+                    onChange={(e) => setGsNotes(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowGeneralServiceModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save General Service</button>
               </div>
             </form>
           </div>

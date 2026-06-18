@@ -41,6 +41,7 @@ interface CockpitProps {
   onQuickLube: () => void;
   onQuickPolish: () => void;
   onNavigate: (tab: string) => void;
+  onLogGeneralService: () => void;
 }
 
 export const Cockpit: React.FC<CockpitProps> = ({
@@ -53,7 +54,8 @@ export const Cockpit: React.FC<CockpitProps> = ({
   parts,
   onQuickLube,
   onQuickPolish,
-  onNavigate
+  onNavigate,
+  onLogGeneralService
 }) => {
   const currentDate = new Date().toISOString().split('T')[0];
 
@@ -124,6 +126,8 @@ export const Cockpit: React.FC<CockpitProps> = ({
     }
   };
 
+  checkKmSchedule('sch-general',  'ERR-SRV-6K-KM', 'General Service (km)',       () => onNavigate('garage'), 'Open Garage');
+  checkDaySchedule('sch-general', 'ERR-SRV-6K-TIME','General Service (time)',     () => onNavigate('garage'), 'Open Garage');
   checkKmSchedule('sch-oil',      'ERR-ENG-010', 'Engine oil change',          () => onNavigate('garage'), 'Open Garage');
   checkKmSchedule('sch-filter',   'ERR-ENG-020', 'Oil filter change',           () => onNavigate('garage'), 'Open Garage');
   checkKmSchedule('sch-lube',     'ERR-CHN-500', 'Chain clean & lubrication',   onQuickLube,                'Lube Chain');
@@ -276,13 +280,23 @@ export const Cockpit: React.FC<CockpitProps> = ({
           <Wrench size={18} />
         </button>
 
-        {/* Center Pill Primary Action Button - Turn On Style */}
+        {/* Center Pills Primary Action Buttons */}
         <button 
           className="control-pill-btn" 
           onClick={() => onNavigate('fuel')}
+          style={{ flex: 1, height: '50px', borderRadius: '25px', padding: '0 0.5rem', gap: '0.35rem', fontSize: '0.75rem' }}
         >
-          <Fuel size={16} />
-          <span>Log Fuel Refill</span>
+          <Fuel size={14} />
+          <span>Log Fuel</span>
+        </button>
+
+        <button 
+          className="control-pill-btn" 
+          onClick={onLogGeneralService}
+          style={{ flex: 1, height: '50px', borderRadius: '25px', background: 'var(--color-cyan)', borderColor: 'var(--color-cyan)', color: '#09090b', padding: '0 0.5rem', gap: '0.35rem', fontSize: '0.75rem' }}
+        >
+          <Wrench size={14} />
+          <span>Log Service</span>
         </button>
 
         {/* Right Circular Button - Lock secure state indicator based on fault count */}

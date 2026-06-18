@@ -27,6 +27,15 @@ export const initialProfile: MotorcycleProfile = {
 
 export const initialSchedules: MaintenanceSchedule[] = [
   {
+    id: "sch-general",
+    name: "General Service",
+    category: "General",
+    intervalKm: 6000,
+    intervalDays: 180,
+    lastPerformedOdo: 20000,
+    lastPerformedDate: "2025-12-15"
+  },
+  {
     id: "sch-oil",
     name: "Engine Oil Change",
     category: "Engine",
@@ -413,6 +422,7 @@ export const initialAdditives: FuelAdditiveRecord[] = [
 // ─── FRESH SEED DATA (for new cloud users — structure only, no fake history) ───
 
 export const freshSchedules: MaintenanceSchedule[] = [
+  { id: "sch-general",  name: "General Service",                category: "General",    intervalKm: 6000,  intervalDays: 180 },
   { id: "sch-oil",      name: "Engine Oil Change",              category: "Engine",     intervalKm: 5000,  intervalDays: 180 },
   { id: "sch-filter",   name: "Oil Filter Change",              category: "Engine",     intervalKm: 8000 },
   { id: "sch-clean",    name: "Chain Cleaning",                 category: "Chain",      intervalKm: 500 },
